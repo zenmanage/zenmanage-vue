@@ -1,33 +1,37 @@
 # Zenmanage Vue SDK Examples
 
-This directory contains examples mirroring the core SDK use-cases with Vue composables.
+Examples mirroring the core SDK use-cases with Vue composables.
 
 ## Setup
 
 ```bash
 npm install
-export ZENMANAGE_ENVIRONMENT_TOKEN="cli_your_client_key_here"
 ```
+
+Use a client key (`cli_...`) in the browser and a server key (`srv_...`) on a server.
 
 ## Core Sample Set
 
-- simple-flags.ts: Basic plugin installation and boolean flag check
-- context-based-flags.ts: Context-targeted evaluations
-- ab-testing.ts: Variant-driven rendering
-- defaults.ts: Inline defaults and DefaultsCollection
-- caching.ts: Cache TTL and usage reporting tuning
-- percentage-rollouts.ts: Deterministic rollout behavior
+- `simple-flags.ts`: Plugin installation and a boolean flag check
+- `context-based-flags.ts`: Context-targeted evaluations
+- `ab-testing.ts`: Variant-driven rendering
+- `defaults.ts`: A `DefaultsCollection` and remote config
+- `caching.ts`: Cache TTL and usage reporting
+- `percentage-rollouts.ts`: Deterministic rollout behavior
+- `json-flags.ts`: JSON flags and a reactive key
+- `flag-gate.ts`: The `FlagGate` component with its slots
 
-## Framework-Specific Patterns (ZEN-580)
+## Framework Setups
 
-- vite-app.ts: Vite app bootstrap with plugin install
-- nuxt-plugin.ts: Nuxt plugin and server bootstrap pattern
+- `vite-app.ts`: A client-side Vite app
+- `vite-ssr-server.ts` and `vite-ssr-client.ts`: Vite SSR with hydration
+- `nuxt-plugin.ts`: A Nuxt plugin with the server payload handed to the browser
 
-## Smoke App Integration
+See [docs/SSR.md](../docs/SSR.md) for the server-rendering guide.
 
-A package-level smoke app is included at `examples/smoke-app`.
+## Smoke App
 
-Run from package root:
+`examples/smoke-app` runs the packed package against the real SDK. Run it from the package root:
 
 ```bash
 npm run test:smoke

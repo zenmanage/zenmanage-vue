@@ -1,16 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import * as VueSdk from '../src';
+import * as root from '../src/index';
+import * as server from '../src/server';
 
-describe('public exports', () => {
-  it('exports public API members', () => {
-    expect(VueSdk.createZenmanagePlugin).toBeDefined();
-    expect(VueSdk.useZenmanage).toBeDefined();
-    expect(VueSdk.useFlag).toBeDefined();
-    expect(VueSdk.useBooleanFlag).toBeDefined();
-    expect(VueSdk.useVariant).toBeDefined();
-    expect(VueSdk.useConfig).toBeDefined();
-    expect(VueSdk.createServerClient).toBeDefined();
-    expect(VueSdk.getServerFlag).toBeDefined();
-    expect(VueSdk.buildBootstrapPayload).toBeDefined();
+describe('package entry point', () => {
+  it('exports the public API', () => {
+    expect(Object.keys(root).sort()).toEqual(
+      [
+        'DEFAULT_BOOTSTRAP_ELEMENT_ID',
+        'FlagGate',
+        'buildBootstrapPayload',
+        'buildBootstrapScript',
+        'clearServerClients',
+        'contextFromBootstrapPayload',
+        'createServerClient',
+        'createServerManager',
+        'createServerRuntime',
+        'createZenmanagePlugin',
+        'defaultsFromBootstrapDocument',
+        'defaultsFromBootstrapPayload',
+        'deserializeBootstrapPayload',
+        'getBootstrapPayload',
+        'getFlagValue',
+        'getServerFlag',
+        'getServerFlags',
+        'mergeDefaults',
+        'preloadServerFlags',
+        'readBootstrapPayloadFromDocument',
+        'serializeBootstrapPayload',
+        'useBooleanFlag',
+        'useConfig',
+        'useFlag',
+        'useVariant',
+        'useZenmanage',
+      ].sort()
+    );
+  });
+
+  it('re-exports the server helpers unchanged', () => {
+    expect(server.getServerFlag).toBe(root.getServerFlag);
+    expect(server.getBootstrapPayload).toBe(root.getBootstrapPayload);
+    expect(server.createServerClient).toBe(root.createServerClient);
   });
 });
