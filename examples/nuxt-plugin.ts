@@ -1,38 +1,39 @@
-import {
-  buildBootstrapPayload,
-  createServerManager,
-  createZenmanagePlugin,
-  serializeBootstrapPayload,
-} from '@zenmanage/vue';
+// plugins/zenmanage.ts
+//
+// nuxt.config.ts:
+//
+//   export default defineNuxtConfig({
+//     runtimeConfig: {
+//       // NUXT_ZENMANAGE_SERVER_KEY: a server key (srv_...). It never reaches the browser.
+//       zenmanageServerKey: '',
+//       public: {
+//         // NUXT_PUBLIC_ZENMANAGE_CLIENT_KEY: a client key (cli_...).
+//         zenmanageClientKey: '',
+//       },
+//     },
+//   });
+import { createZenmanagePlugin, type BootstrapPayload } from '@zenmanage/vue';
 
 export default defineNuxtPlugin(async (nuxtApp) => {
+  const config = useRuntimeConfig();
+
   if (import.meta.server) {
-    const manager = createServerManager({
-      environmentToken: process.env.ZENMANAGE_ENVIRONMENT_TOKEN!,
-    });
+    // Server key, evaluated while Nuxt renders the page.
+    const plugin = createZenmanagePlugin({ environmentToken: config.zenmanageServerKey });
+    nuxtApp.vueApp.use(plugin);
 
-    const flags = await manager.all();
-    const defaults = Object.fromEntries(flags.map((flag) => [flag.getKey(), flag.getValue()]));
-    const payload = buildBootstrapPayload(defaults);
-
-    useHead({
-      script: [
-        {
-          id: '__ZENMANAGE_BOOTSTRAP__',
-          type: 'application/json',
-          children: serializeBootstrapPayload(payload),
-        },
-      ],
+    // Once the page has rendered, hand the flags it read to the browser through the Nuxt payload.
+    nuxtApp.hook('app:rendered', async () => {
+      nuxtApp.payload.zenmanage = await plugin.runtime.getBootstrapPayload();
     });
+    return;
   }
 
+  // Client key, starting from what the server evaluated so hydration matches the HTML.
   nuxtApp.vueApp.use(
     createZenmanagePlugin({
-      environmentToken: import.meta.server
-        ? process.env.ZENMANAGE_ENVIRONMENT_TOKEN!
-        : (window as { __NUXT__?: { config?: { public?: { zenmanageToken?: string } } } }).__NUXT__
-            ?.config?.public?.zenmanageToken,
-      preload: !import.meta.server,
+      environmentToken: config.public.zenmanageClientKey,
+      bootstrap: (nuxtApp.payload.zenmanage as BootstrapPayload | undefined) ?? null,
     })
   );
 });

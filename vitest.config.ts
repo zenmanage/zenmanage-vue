@@ -3,7 +3,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
+    // Server rendering and server helpers run in Node. Component tests opt into jsdom with a
+    // `// @vitest-environment jsdom` comment, because @zenmanage/sdk takes a window to mean
+    // "browser" and rejects server keys there.
+    environment: 'node',
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
     coverage: {

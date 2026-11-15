@@ -1,59 +1,28 @@
-import {
-  ConfigBuilder,
-  DefaultsCollection,
-  Zenmanage,
-  type Context,
-  type Flag,
-  type FlagManager,
-  type FlagValue,
-} from '@zenmanage/sdk';
+import { DefaultsCollection, type Flag, type FlagManager, type FlagValue } from '@zenmanage/sdk';
+import { buildBootstrapPayload } from './bootstrap';
+import { createServerClient } from './client';
 import type {
+  BootstrapPayload,
+  ServerBootstrapInput,
   ServerFlagInput,
   ServerFlagsInput,
   VueFlagsRuntime,
-  VueZenmanageClientOptions,
+  WidenFlagValue,
 } from './types';
 
-function applyCommonConfig(
-  options: VueZenmanageClientOptions,
-  builder: ConfigBuilder
-): ConfigBuilder {
-  builder.withEnvironmentToken(options.environmentToken);
-
-  if (options.apiEndpoint) {
-    builder.withApiEndpoint(options.apiEndpoint);
-  }
-
-  if (typeof options.cacheTtl === 'number') {
-    builder.withCacheTtl(options.cacheTtl);
-  }
-
-  if (typeof options.enableUsageReporting === 'boolean') {
-    builder.withUsageReporting(options.enableUsageReporting);
-  }
-
-  if (options.logger) {
-    builder.withLogger(options.logger);
-  }
-
-  return builder;
-}
-
-export function createServerClient(options: VueZenmanageClientOptions): Zenmanage {
-  const builder = applyCommonConfig(options, ConfigBuilder.create());
-  return new Zenmanage(builder.build());
-}
+export { mergeDefaults } from './defaults';
+export { clearServerClients, createServerClient } from './client';
 
 export function createServerRuntime(options: ServerFlagsInput): VueFlagsRuntime {
   const client = createServerClient(options);
-  let manager = client.flags();
+
+  // A manager loads its rules once and keeps them until its cache TTL passes. Handing out the
+  // client's own manager would share that state between requests, so every call gets a copy
+  // that reads the shared cache instead.
+  let manager = client.flags().withDefaults(options.defaults ?? new DefaultsCollection());
 
   if (options.context) {
     manager = manager.withContext(options.context);
-  }
-
-  if (options.defaults) {
-    manager = manager.withDefaults(options.defaults);
   }
 
   return { client, manager };
@@ -79,58 +48,49 @@ export async function preloadServerFlags(input: ServerFlagsInput): Promise<FlagM
   return manager;
 }
 
+/**
+ * Evaluates a flag and returns its value as the type of `fallback`: a boolean, number or
+ * string, or a JSON object or array. A literal fallback (`'control'`, `false`) gives the
+ * widened type (`string`, `boolean`), so the result can be compared with other values.
+ *
+ * `fallback` is also the default, for a flag that doesn't exist or when the API can't be
+ * reached. A `defaultValue` in `input`, or an entry for the key in `input.defaults`, is more
+ * specific and wins over it.
+ */
 export async function getFlagValue<T extends FlagValue>(
   input: ServerFlagInput,
   fallback: T
-): Promise<T> {
-  const flag = await getServerFlag(input);
+): Promise<WidenFlagValue<T>> {
+  // The SDK prefers an inline default over a defaults collection, so the fallback only goes in
+  // when nothing else would supply one. Otherwise it would override the collection's entry.
+  const hasOwnDefault = input.defaultValue !== undefined || input.defaults?.has(input.key) === true;
+  const flag = await getServerFlag(hasOwnDefault ? input : { ...input, defaultValue: fallback });
 
   if (typeof fallback === 'boolean') {
-    return flag.asBool() as T;
+    return flag.asBool() as WidenFlagValue<T>;
   }
 
   if (typeof fallback === 'number') {
-    return flag.asNumber() as T;
+    return flag.asNumber() as WidenFlagValue<T>;
   }
 
-  return flag.asString() as T;
+  if (typeof fallback === 'string') {
+    return flag.asString() as WidenFlagValue<T>;
+  }
+
+  return flag.asJson() as WidenFlagValue<T>;
 }
 
-export function mergeDefaults(
-  base?: DefaultsCollection,
-  bootstrap?: DefaultsCollection
-): DefaultsCollection | undefined {
-  if (!base && !bootstrap) {
-    return undefined;
-  }
+/**
+ * Evaluates flags on the server and packages them for the browser's plugin. Pass `keys` to
+ * send only the flags the page reads.
+ */
+export async function getBootstrapPayload(input: ServerBootstrapInput): Promise<BootstrapPayload> {
+  const flags = await getServerFlags(input);
+  const wanted = input.keys ? new Set(input.keys) : null;
 
-  const merged = new DefaultsCollection();
-
-  if (bootstrap) {
-    for (const key of bootstrap.keys()) {
-      const value = bootstrap.get(key);
-      if (value !== undefined) {
-        merged.set(key, value);
-      }
-    }
-  }
-
-  if (base) {
-    for (const key of base.keys()) {
-      const value = base.get(key);
-      if (value !== undefined) {
-        merged.set(key, value);
-      }
-    }
-  }
-
-  return merged;
-}
-
-export function contextWithDefaults(
-  context: Context | undefined,
-  defaults: Record<string, FlagValue>
-): { context?: Context; defaults: DefaultsCollection } {
-  const collection = DefaultsCollection.fromObject(defaults);
-  return { context, defaults: collection };
+  return buildBootstrapPayload(
+    flags.filter((flag) => wanted === null || wanted.has(flag.getKey())),
+    { context: input.includeContext ? input.context : undefined }
+  );
 }
