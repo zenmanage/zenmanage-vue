@@ -196,6 +196,31 @@ describe('refresh()', () => {
   });
 });
 
+describe('a refresh that fails after the manager was replaced', () => {
+  it('does not put its error on the new manager', async () => {
+    installFakeApi([flag('a', true)]);
+    const onError = vi.fn();
+    const context = ref<Context | undefined>(Context.single('user', 'u-1'));
+    const { runtime } = installed({ environmentToken: CLIENT_KEY, context, onError });
+    await runtime.whenReady();
+    let fail: (error: Error) => void = () => undefined;
+    vi.spyOn(runtime.manager, 'refreshRules').mockImplementation(
+      () => new Promise<void>((_resolve, reject) => (fail = reject))
+    );
+
+    const refreshing = runtime.refresh();
+    context.value = Context.single('user', 'u-2');
+    await nextTick();
+    await runtime.whenReady();
+    fail(new Error('old manager failed'));
+
+    await expect(refreshing).rejects.toThrow('old manager failed');
+    expect(runtime.error.value).toBeNull();
+    expect(onError).not.toHaveBeenCalled();
+    await expect(runtime.preload()).resolves.toBeUndefined();
+  });
+});
+
 describe('the app', () => {
   it('provides the runtime and exposes it as $zenmanage', () => {
     installFakeApi([]);
@@ -240,6 +265,19 @@ describe('the bootstrap payload', () => {
     const { runtime } = installed({ environmentToken: CLIENT_KEY, bootstrap: payload, context });
 
     expect(runtime.context).toBe(context);
+  });
+
+  it('stops using the payload context once a context option says there is none', async () => {
+    installFakeApi([]);
+    const context = ref<Context | undefined>(Context.single('user', 'u-2'));
+
+    const { runtime } = installed({ environmentToken: CLIENT_KEY, bootstrap: payload, context });
+    expect(runtime.context?.getIdentifier()).toBe('u-2');
+
+    context.value = undefined;
+    await nextTick();
+
+    expect(runtime.context).toBeUndefined();
   });
 
   it('is read from the page when the option is left out, and skipped with null', () => {

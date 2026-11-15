@@ -1,4 +1,4 @@
-import type { FlagValue } from '@zenmanage/sdk';
+import type { FlagManager, FlagValue } from '@zenmanage/sdk';
 import type { ShallowRef } from 'vue';
 import type { ZenmanageRuntime } from './types';
 
@@ -14,6 +14,11 @@ export interface RuntimeInternals {
    * value" apart from "the SDK fell back to the default because nothing loaded".
    */
   live: ShallowRef<ReadonlySet<string> | null>;
+  /**
+   * The manager the bootstrap payload was evaluated for. Once the context or defaults change
+   * the runtime has another one, and the server's values no longer apply to it.
+   */
+  seedManager: FlagManager;
 }
 
 const internals = new WeakMap<ZenmanageRuntime, RuntimeInternals>();

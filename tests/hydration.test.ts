@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { Zenmanage } from '@zenmanage/sdk';
-import { createApp, createSSRApp, defineComponent, h, nextTick } from 'vue';
+import { Context, Zenmanage } from '@zenmanage/sdk';
+import { createApp, createSSRApp, defineComponent, h, nextTick, ref } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { describe, expect, it, vi } from 'vitest';
 import { buildBootstrapPayload, buildBootstrapScript } from '../src/bootstrap';
@@ -143,5 +143,59 @@ describe('hydration', () => {
     app.mount(container);
 
     expect(text('c')).toBe('none|loading');
+  });
+
+  it('hydrates a flag the server answered from a default without a mismatch', async () => {
+    installFakeApi([flag('new-checkout', true)]);
+    const html = await serverHtml();
+    expect(html).toContain('<p id="b">0|ready</p>');
+
+    const warnings = await hydrate(html, {
+      environmentToken: CLIENT_KEY,
+      bootstrap: buildBootstrapPayload({ 'new-checkout': true, limit: 0 }),
+    });
+
+    expect(warnings).toEqual([]);
+    await vi.waitFor(() => expect(text('b')).toBe('0|ready'));
+  });
+
+  it('hydrates cleanly when the server could not load the rules', async () => {
+    installFakeApi([flag('new-checkout', true), flag('limit', 7)]).goOffline();
+    const html = await serverHtml();
+    expect(html).toContain('<p id="a">false|ready</p>');
+
+    installFakeApi([flag('new-checkout', true), flag('limit', 7)]);
+    const warnings = await hydrate(html, {
+      environmentToken: CLIENT_KEY,
+      bootstrap: buildBootstrapPayload({ 'new-checkout': false, limit: 0 }),
+    });
+
+    expect(warnings).toEqual([]);
+    await vi.waitFor(() => expect(text('a')).toBe('true|ready'));
+    expect(text('b')).toBe('7|ready');
+  });
+
+  it('stops showing the server values once the context changes', async () => {
+    installFakeApi([flag('new-checkout', true), flag('limit', 7)]);
+    const context = ref<Context | undefined>(undefined);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const app = createApp(Page);
+    app.use(
+      createZenmanagePlugin({
+        environmentToken: CLIENT_KEY,
+        enableUsageReporting: false,
+        bootstrap: buildBootstrapPayload({ 'new-checkout': false, limit: 1 }),
+        context,
+      })
+    );
+    app.mount(container);
+    await vi.waitFor(() => expect(text('a')).toBe('true|ready'));
+
+    context.value = Context.single('user', 'u-2');
+    await nextTick();
+
+    expect(text('a')).toBe('false|loading');
+    await vi.waitFor(() => expect(text('a')).toBe('true|ready'));
   });
 });

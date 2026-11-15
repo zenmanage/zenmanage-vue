@@ -55,8 +55,12 @@ export function createRuntime(options: ZenmanagePluginOptions): ZenmanageRuntime
   const bootstrapDefaults = defaultsFromBootstrapPayload(bootstrap);
 
   // Without an explicit context the browser evaluates for the user the server evaluated for.
+  // Only when no `context` option was given at all: a ref that becomes undefined (a user
+  // logging out) means "no context", not "the server's user".
   const currentContext = (): Context | undefined =>
-    toValue(options.context) ?? contextFromBootstrapPayload(bootstrap);
+    options.context === undefined
+      ? contextFromBootstrapPayload(bootstrap)
+      : toValue(options.context);
   const currentDefaults = (): DefaultsCollection | undefined =>
     mergeDefaults(toValue(options.defaults), bootstrapDefaults);
 
@@ -160,20 +164,25 @@ export function createRuntime(options: ZenmanagePluginOptions): ZenmanageRuntime
 
     try {
       await target.refreshRules();
+      const flags = await target.all();
 
+      // The context changed while this ran: the new manager's own load is the one that counts.
       if (target !== manager.value) {
         return;
       }
 
-      const flags = await target.all();
       live.value = new Set(flags.map((flag) => flag.getKey()));
       isReady.value = true;
       error.value = null;
       revision.value += 1;
     } catch (refreshError) {
       const resolved = toError(refreshError);
-      error.value = resolved;
-      options.onError?.(resolved);
+
+      if (target === manager.value) {
+        error.value = resolved;
+        options.onError?.(resolved);
+      }
+
       throw resolved;
     }
   }
@@ -192,21 +201,20 @@ export function createRuntime(options: ZenmanagePluginOptions): ZenmanageRuntime
   ): Promise<BootstrapPayload> {
     await initialLoad;
 
-    const all = await manager.value.all();
     let flags: Record<string, FlagValue>;
 
     if (payloadOptions.keys) {
       const wanted = new Set(payloadOptions.keys);
+      const all = await manager.value.all();
       flags = Object.fromEntries(
         all
           .filter((flag) => wanted.has(flag.getKey()))
           .map((flag) => [flag.getKey(), flag.getValue()])
       );
     } else {
-      // A flag the rules don't contain was answered from a default. That's the page's own
-      // default, which the browser already has, so it isn't the server's to hand over.
-      const known = new Set(all.map((flag) => flag.getKey()));
-      flags = Object.fromEntries([...evaluated].filter(([key]) => known.has(key)));
+      // What the page displayed, including flags answered from a default: the browser has to
+      // start from the same values or hydration won't match.
+      flags = Object.fromEntries(evaluated);
     }
 
     return buildBootstrapPayload(flags, {
@@ -237,7 +245,7 @@ export function createRuntime(options: ZenmanagePluginOptions): ZenmanageRuntime
     dispose: () => scope.stop(),
   };
 
-  registerInternals(runtime, { evaluated, live });
+  registerInternals(runtime, { evaluated, live, seedManager: manager.value });
 
   return runtime;
 }

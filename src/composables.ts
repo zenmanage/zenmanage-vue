@@ -63,7 +63,7 @@ export function useFlag<T extends FlagValue>(
   defaultValue: T
 ): UseFlagResult<WidenFlagValue<T>> {
   const runtime = useZenmanage();
-  const { evaluated, live } = internalsOf(runtime);
+  const { evaluated, live, seedManager } = internalsOf(runtime);
   const currentKey = computed(() => toValue(key));
   const resolution = shallowRef<Resolution<WidenFlagValue<T>> | null>(null);
   let evaluation = 0;
@@ -87,7 +87,7 @@ export function useFlag<T extends FlagValue>(
 
       if (current === evaluation && !isDisposed) {
         const value = coerceValue(flag, defaultValue);
-        evaluated.set(evaluatedKey, flag.getValue());
+        evaluated.set(evaluatedKey, value);
         resolution.value = { key: evaluatedKey, manager, flag, value, error: null };
       }
     } catch (error) {
@@ -115,18 +115,23 @@ export function useFlag<T extends FlagValue>(
   });
 
   // What the server evaluated for this key, while it's the best answer there is: the server's
-  // value, until the browser's rules contain the flag and its own evaluation replaces it.
-  // Without it the browser would render the default first and swap, which doesn't match the
-  // server's HTML.
+  // value, until the browser's rules have loaded and its own evaluation replaces it. Without it
+  // the browser would render the default first and swap, which doesn't match the server's
+  // HTML. If the rules never load (`live` is empty), the server's value stays. It applies only
+  // to the manager it was evaluated for: after the context changes it's another user's answer.
   const seed = computed(() => {
     const candidate = runtime.bootstrap?.flags[currentKey.value];
 
-    if (candidate === undefined || !sameKind(candidate, defaultValue)) {
+    if (
+      candidate === undefined ||
+      !sameKind(candidate, defaultValue) ||
+      runtime.manager !== seedManager
+    ) {
       return undefined;
     }
 
-    const hasLiveValue = live.value?.has(currentKey.value) === true;
-    return hasLiveValue && settled.value !== null ? undefined : candidate;
+    const rulesLoaded = live.value !== null && live.value.size > 0;
+    return rulesLoaded && settled.value !== null ? undefined : candidate;
   });
 
   const value = computed(() => {

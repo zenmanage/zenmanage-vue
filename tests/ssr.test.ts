@@ -122,7 +122,7 @@ describe('the payload for the browser', () => {
     expect(payload.context).toBeUndefined();
   });
 
-  it('leaves out a flag the environment does not have, which was only answered from a default', async () => {
+  it('includes a flag the environment does not have, so the browser starts from what was shown', async () => {
     installFakeApi([flag('real', true)]);
 
     const { runtime } = await render(() => [
@@ -130,7 +130,23 @@ describe('the payload for the browser', () => {
       h(FlagOutput, { flagKey: 'absent', fallback: 'x', id: 'b' }),
     ]);
 
-    expect((await runtime.getBootstrapPayload()).flags).toEqual({ real: true });
+    expect((await runtime.getBootstrapPayload()).flags).toEqual({ real: true, absent: 'x' });
+  });
+
+  it('holds the value as the page read it, in the type the composable asked for', async () => {
+    installFakeApi([flag('on', true)]);
+
+    const { runtime } = await render(() => [h(FlagOutput, { flagKey: 'on', fallback: 'off' })]);
+
+    expect((await runtime.getBootstrapPayload()).flags).toEqual({ on: 'true' });
+  });
+
+  it('still describes the page when the rules could not be loaded', async () => {
+    installFakeApi([flag('a', true)]).goOffline();
+
+    const { runtime } = await render(() => [h(FlagOutput, { flagKey: 'a', fallback: false })]);
+
+    expect((await runtime.getBootstrapPayload()).flags).toEqual({ a: false });
   });
 
   it('holds the value the server evaluated, not the default the page asked with', async () => {
