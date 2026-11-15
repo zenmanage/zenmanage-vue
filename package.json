@@ -76,7 +76,7 @@
     "@changesets/cli": "^2.28.1",
     "@types/node": "^20.11.0",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/parser": "^6.20.0",
+    "@typescript-eslint/parser": "^8.72.2",
     "@vitest/coverage-v8": "^1.6.0",
     "@vue/test-utils": "^2.4.6",
     "@zenmanage/sdk": "^3.5.3",
