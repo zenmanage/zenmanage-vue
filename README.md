@@ -2,6 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/@zenmanage%2Fvue.svg)](https://www.npmjs.com/package/@zenmanage/vue)
 [![Build Status](https://github.com/zenmanage/zenmanage-vue/actions/workflows/ci.yml/badge.svg)](https://github.com/zenmanage/zenmanage-vue)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/8f8886eaf6e84a0aa71d5cc608d473db)](https://app.codacy.com/gh/zenmanage/zenmanage-vue/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
 Vue 3 plugin, composables, and server-rendering helpers for Zenmanage feature flags.
