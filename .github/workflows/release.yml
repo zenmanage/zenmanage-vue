@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
 
+# Two runs at once (a merge landing while another release is still publishing) race on npm:
+# the second one is told "Cannot publish over previously staged version". Queue them instead.
+# GitHub keeps one pending run per group, so a newer pending run replaces an older one. That
+# loses nothing here: a run releases whatever on `main` isn't on npm yet, and the newer commit
+# contains every earlier one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -16,10 +25,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
