@@ -1,5 +1,11 @@
 # @zenmanage/vue
 
+## 1.1.1
+
+### Patch Changes
+
+- 2368c7a: Build and type-check with TypeScript 7. No changes to the public API or runtime behavior. The generated type declarations now list type-only exports in one `export type { ... }` block instead of inline `type` modifiers; the types themselves are the same.
+
 ## 1.1.0
 
 ### Minor Changes
