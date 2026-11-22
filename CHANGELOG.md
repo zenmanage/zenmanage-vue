@@ -1,5 +1,11 @@
 # @zenmanage/vue
 
+## 1.1.0
+
+### Minor Changes
+
+- 06afea7: Maintenance release. Development dependency updates: `@typescript-eslint/eslint-plugin` and `parser` 6 to 8, `eslint-config-prettier` 9 to 10, `@changesets/cli` 2 to 3, and the smoke app's `vitest` and `jsdom`. The release workflow now runs on Node 22. No changes to the public API or runtime behavior.
+
 ## 1.0.0
 
 First public release. The API below is the 1.0 surface, and semantic versioning applies from here. The Changed, Removed, and Fixed entries are relative to the internal 0.1.0 snapshot.
