@@ -84,7 +84,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.2.1",
-    "jsdom": "^24.1.1",
+    "jsdom": "^26.1.0",
     "prettier": "^3.3.3",
     "tsup": "^8.2.4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
