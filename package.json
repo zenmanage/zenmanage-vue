@@ -81,7 +81,7 @@
     "@vue/test-utils": "^2.4.6",
     "@zenmanage/sdk": "^3.5.3",
     "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.2.1",
     "jsdom": "^24.1.1",
     "prettier": "^3.3.3",
